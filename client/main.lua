@@ -149,7 +149,7 @@ RegisterCommand('togglelocks', function()
     ToggleVehicleLocks(GetVehicle())
 end)
 
-RegisterKeyMapping('engine', Lang:t("info.engine"), 'keyboard', 'G')
+RegisterKeyMapping('engine', Lang:t("info.engine"), 'keyboard', 'O')
 RegisterCommand('engine', function()
     TriggerEvent("qb-vehiclekeys:client:ToggleEngine")
 end)
@@ -441,37 +441,19 @@ end
 function Hotwire(vehicle, plate)
     local hotwireTime = math.random(Config.minHotwireTime, Config.maxHotwireTime)
     local ped = PlayerPedId()
-    IsHotwiring = true
 
     SetVehicleAlarm(vehicle, true)
     SetVehicleAlarmTimeLeft(vehicle, hotwireTime)
-    QBCore.Functions.Progressbar("hotwire_vehicle", Lang:t("progress.hskeys"), hotwireTime, false, true, {
-        disableMovement = true,
-        disableCarMovement = true,
-        disableMouse = false,
-        disableCombat = true
-    }, {
-        animDict = "anim@amb@clubhouse@tutorial@bkr_tut_ig3@",
-        anim = "machinic_loop_mechandplayer",
-        flags = 16
-    }, {}, {}, function() -- Done
-        StopAnimTask(ped, "anim@amb@clubhouse@tutorial@bkr_tut_ig3@", "machinic_loop_mechandplayer", 1.0)
-        TriggerServerEvent('hud:server:GainStress', math.random(1, 4))
-        if (math.random() <= Config.HotwireChance) then
+    exports['ps-ui']:Circle(function(success)
+        IsHotwiring = true
+        if success then
             TriggerServerEvent('qb-vehiclekeys:server:AcquireVehicleKeys', plate)
+            IsHotwiring = false
         else
             QBCore.Functions.Notify(Lang:t("notify.fvlockpick"), "error")
+            IsHotwiring = false
         end
-        Wait(Config.TimeBetweenHotwires)
-        IsHotwiring = false
-    end, function() -- Cancel
-        StopAnimTask(ped, "anim@amb@clubhouse@tutorial@bkr_tut_ig3@", "machinic_loop_mechandplayer", 1.0)
-        IsHotwiring = false
-    end)
-    SetTimeout(10000, function()
-        AttemptPoliceAlert("steal")
-    end)
-    IsHotwiring = false
+    end, 4, 8) -- NumberOfCircles, MS
 end
 
 function CarjackVehicle(target)
@@ -549,7 +531,24 @@ function AttemptPoliceAlert(type)
             chance = Config.PoliceNightAlertChance
         end
         if math.random() <= chance then
-           TriggerServerEvent('police:server:policeAlert', Lang:t("info.palert") .. type)
+            local data = exports['cd_dispatch']:GetPlayerInfo()
+            TriggerServerEvent('cd_dispatch:AddNotification', {
+                job_table = {'police', 'sheriff', 'detectives'}, 
+                coords = data.coords,
+                title = '10-15 - Car Robbery',
+                message = 'A '..data.sex..' robbing a car at '..data.street, 
+                flash = 0,
+                unique_id = tostring(math.random(0000000,9999999)),
+                blip = {
+                    sprite = 431, 
+                    scale = 1.2, 
+                    colour = 3,
+                    flashes = false, 
+                    text = '911 - Car Robbery',
+                    time = (5*60*1000),
+                    sound = 1,
+                }
+            })
         end
         AlertSend = true
         SetTimeout(Config.AlertCooldown, function()
